@@ -20,7 +20,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $name = trim($_POST['name']);
     $email = trim($_POST['email']);
     $department = trim($_POST['department']);
+    $custom_department = trim($_POST['custom_department'] ?? '');
     $salary = trim($_POST['salary']);
+
+    // Handle custom department
+    if ($department === 'OTHERS' && !empty($custom_department)) {
+        $department = $custom_department;
+    }
 
     // Validation
     if (empty($name) || empty($email) || empty($department) || empty($salary)) {
@@ -155,6 +161,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.2);
         }
 
+        select option {
+            background: #1e293b;
+            color: #ffffff;
+            padding: 8px;
+        }
+
+        select option:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
         .error-message {
             background: #451a1a;
             color: #f87171;
@@ -251,16 +267,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 <div class="form-group">
                     <label for="department">Department *</label>
-                    <select id="department" name="department" required>
+                    <select id="department" name="department" required onchange="toggleCustomDepartment()">
                         <option value="">Select Department</option>
-                        <option value="HR">Human Resources</option>
-                        <option value="IT">Information Technology</option>
-                        <option value="Sales">Sales</option>
-                        <option value="Marketing">Marketing</option>
-                        <option value="Finance">Finance</option>
-                        <option value="Operations">Operations</option>
-                        <option value="Development">Development</option>
+                        <option value="Full Stack Developer">Full Stack Developer</option>
+                        <option value="Data Analyst">Data Analyst</option>
+                        <option value="Game Developer">Game Developer</option>
+                        <option value="Blockchain Developer">Blockchain Developer</option>
+                        <option value="AI/ML Engineer">AI/ML Engineer</option>
+                        <option value="DevOps Engineer">DevOps Engineer</option>
+                        <option value="OTHERS">OTHERS</option>
                     </select>
+                </div>
+
+                <div class="form-group" id="custom-department-group" style="display: none;">
+                    <label for="custom_department">Specify Department *</label>
+                    <input type="text" id="custom_department" name="custom_department" placeholder="Enter department name">
                 </div>
 
                 <div class="form-group">
@@ -275,5 +296,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             </form>
         </div>
     </div>
+
+    <script>
+        function toggleCustomDepartment() {
+            const departmentSelect = document.getElementById('department');
+            const customDepartmentGroup = document.getElementById('custom-department-group');
+            const customDepartmentInput = document.getElementById('custom_department');
+
+            if (departmentSelect.value === 'OTHERS') {
+                customDepartmentGroup.style.display = 'block';
+                customDepartmentInput.required = true;
+            } else {
+                customDepartmentGroup.style.display = 'none';
+                customDepartmentInput.required = false;
+                customDepartmentInput.value = '';
+            }
+        }
+    </script>
 </body>
 </html>

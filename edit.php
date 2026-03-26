@@ -39,7 +39,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $name = trim($_POST['name']);
     $email = trim($_POST['email']);
     $department = trim($_POST['department']);
+    $custom_department = trim($_POST['custom_department'] ?? '');
     $salary = trim($_POST['salary']);
+
+    // Handle custom department
+    if ($department === 'OTHERS' && !empty($custom_department)) {
+        $department = $custom_department;
+    }
 
     // Validation
     if (empty($name) || empty($email) || empty($department) || empty($salary)) {
@@ -174,6 +180,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.2);
         }
 
+        select option {
+            background: #1e293b;
+            color: #ffffff;
+            padding: 8px;
+        }
+
+        select option:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
         .error-message {
             background: #451a1a;
             color: #f87171;
@@ -270,16 +286,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 <div class="form-group">
                     <label for="department">Department *</label>
-                    <select id="department" name="department" required>
+                    <select id="department" name="department" required onchange="toggleCustomDepartment()">
                         <option value="">Select Department</option>
-                        <option value="HR" <?php echo $employee['department'] == 'HR' ? 'selected' : ''; ?>>Human Resources</option>
-                        <option value="IT" <?php echo $employee['department'] == 'IT' ? 'selected' : ''; ?>>Information Technology</option>
-                        <option value="Sales" <?php echo $employee['department'] == 'Sales' ? 'selected' : ''; ?>>Sales</option>
-                        <option value="Marketing" <?php echo $employee['department'] == 'Marketing' ? 'selected' : ''; ?>>Marketing</option>
-                        <option value="Finance" <?php echo $employee['department'] == 'Finance' ? 'selected' : ''; ?>>Finance</option>
-                        <option value="Operations" <?php echo $employee['department'] == 'Operations' ? 'selected' : ''; ?>>Operations</option>
-                        <option value="Development" <?php echo $employee['department'] == 'Development' ? 'selected' : ''; ?>>Development</option>
+                        <option value="Full Stack Developer" <?php echo $employee['department'] == 'Full Stack Developer' ? 'selected' : ''; ?>>Full Stack Developer</option>
+                        <option value="Data Analyst" <?php echo $employee['department'] == 'Data Analyst' ? 'selected' : ''; ?>>Data Analyst</option>
+                        <option value="Game Developer" <?php echo $employee['department'] == 'Game Developer' ? 'selected' : ''; ?>>Game Developer</option>
+                        <option value="Blockchain Developer" <?php echo $employee['department'] == 'Blockchain Developer' ? 'selected' : ''; ?>>Blockchain Developer</option>
+                        <option value="AI/ML Engineer" <?php echo $employee['department'] == 'AI/ML Engineer' ? 'selected' : ''; ?>>AI/ML Engineer</option>
+                        <option value="DevOps Engineer" <?php echo $employee['department'] == 'DevOps Engineer' ? 'selected' : ''; ?>>DevOps Engineer</option>
+                        <option value="OTHERS" <?php echo (in_array($employee['department'], ['Full Stack Developer', 'Data Analyst', 'Game Developer', 'Blockchain Developer', 'AI/ML Engineer', 'DevOps Engineer']) ? '' : 'selected'); ?>>OTHERS</option>
                     </select>
+                </div>
+
+                <div class="form-group" id="custom-department-group" style="display: <?php echo (in_array($employee['department'], ['Full Stack Developer', 'Data Analyst', 'Game Developer', 'Blockchain Developer', 'AI/ML Engineer', 'DevOps Engineer']) ? 'none' : 'block'); ?>;">
+                    <label for="custom_department">Specify Department *</label>
+                    <input type="text" id="custom_department" name="custom_department" value="<?php echo (in_array($employee['department'], ['Full Stack Developer', 'Data Analyst', 'Game Developer', 'Blockchain Developer', 'AI/ML Engineer', 'DevOps Engineer']) ? '' : htmlspecialchars($employee['department'])); ?>" placeholder="Enter department name" <?php echo (in_array($employee['department'], ['Full Stack Developer', 'Data Analyst', 'Game Developer', 'Blockchain Developer', 'AI/ML Engineer', 'DevOps Engineer']) ? '' : 'required'); ?>>
                 </div>
 
                 <div class="form-group">
@@ -294,5 +315,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             </form>
         </div>
     </div>
+
+    <script>
+        function toggleCustomDepartment() {
+            const departmentSelect = document.getElementById('department');
+            const customDepartmentGroup = document.getElementById('custom-department-group');
+            const customDepartmentInput = document.getElementById('custom_department');
+
+            if (departmentSelect.value === 'OTHERS') {
+                customDepartmentGroup.style.display = 'block';
+                customDepartmentInput.required = true;
+            } else {
+                customDepartmentGroup.style.display = 'none';
+                customDepartmentInput.required = false;
+                customDepartmentInput.value = '';
+            }
+        }
+    </script>
 </body>
 </html>
