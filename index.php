@@ -21,35 +21,47 @@ $filter_salary_min = isset($_GET['filter_salary_min']) && $_GET['filter_salary_m
 $filter_salary_max = isset($_GET['filter_salary_max']) && $_GET['filter_salary_max'] !== '' ? (int)$_GET['filter_salary_max'] : null;
 $sort_by = isset($_GET['sort_by']) ? trim($_GET['sort_by']) : 'date_added';
 
+// Pagination parameters
+$employees_per_page = 10;
+$page = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] : 1;
+$page = max(1, $page); // Ensure page is at least 1
+$offset = ($page - 1) * $employees_per_page;
+
 // Check if any filters are active
 $has_active_filters = !empty($search_name) || !empty($search_email) || !empty($filter_department) || $filter_salary_min !== null || $filter_salary_max !== null;
 
 // Build the SQL query with filters
 $query = "SELECT * FROM employees WHERE 1=1";
+$count_query = "SELECT COUNT(*) as total FROM employees WHERE 1=1";
 $params = [];
 
 if (!empty($search_name)) {
     $query .= " AND name LIKE ?";
+    $count_query .= " AND name LIKE ?";
     $params[] = "%" . $search_name . "%";
 }
 
 if (!empty($search_email)) {
     $query .= " AND email LIKE ?";
+    $count_query .= " AND email LIKE ?";
     $params[] = "%" . $search_email . "%";
 }
 
 if (!empty($filter_department)) {
     $query .= " AND department = ?";
+    $count_query .= " AND department = ?";
     $params[] = $filter_department;
 }
 
 if ($filter_salary_min !== null) {
     $query .= " AND salary >= ?";
+    $count_query .= " AND salary >= ?";
     $params[] = $filter_salary_min;
 }
 
 if ($filter_salary_max !== null) {
     $query .= " AND salary <= ?";
+    $count_query .= " AND salary <= ?";
     $params[] = $filter_salary_max;
 }
 
@@ -68,9 +80,24 @@ switch($sort_by) {
         $query .= " ORDER BY id DESC";
 }
 
+// Add pagination to main query
+$query .= " LIMIT " . (int)$employees_per_page . " OFFSET " . (int)$offset;
+
+// Execute queries
 $stmt = $conn->prepare($query);
 $stmt->execute($params);
 $employees = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Get total count
+$count_stmt = $conn->prepare($count_query);
+$count_stmt->execute($params); // Use all params since LIMIT/OFFSET are now direct values
+$total_employees = $count_stmt->fetch(PDO::FETCH_ASSOC)['total'];
+$total_pages = ceil($total_employees / $employees_per_page);
+
+// Ensure current page doesn't exceed total pages
+if ($page > $total_pages && $total_pages > 0) {
+    $page = $total_pages;
+}
 
 // Get all unique departments for the filter dropdown
 $dept_stmt = $conn->query("SELECT DISTINCT department FROM employees ORDER BY department ASC");
@@ -560,6 +587,97 @@ $departments = $dept_stmt->fetchAll(PDO::FETCH_COLUMN);
             margin-bottom: 24px;
         }
 
+        .pagination-section {
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .pagination-info {
+            color: #d1d5db;
+            font-size: 14px;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        .pagination-controls {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .pagination-btn {
+            padding: 8px 12px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #d1d5db;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .pagination-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.3);
+            color: #ffffff;
+        }
+
+        .pagination-btn.active {
+            background: #6366f1;
+            color: white;
+            border-color: #6366f1;
+        }
+
+        .pagination-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .pagination-btn:disabled:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.2);
+            color: #d1d5db;
+        }
+
+        .page-input {
+            width: 60px;
+            padding: 8px 12px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.08);
+            color: #ffffff;
+            font-size: 14px;
+            text-align: center;
+            font-family: inherit;
+        }
+
+        .page-input:focus {
+            outline: none;
+            border-color: #6366f1;
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        .page-jump {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #d1d5db;
+            font-size: 14px;
+        }
+
         @media (max-width: 768px) {
             .header {
                 flex-direction: column;
@@ -610,6 +728,7 @@ $departments = $dept_stmt->fetchAll(PDO::FETCH_COLUMN);
             </div>
 
             <form method="GET" action="index.php" id="filterForm">
+                <input type="hidden" name="page" value="1"> <!-- Reset to page 1 when applying filters -->
                 <div class="filter-grid">
                     <div class="filter-group">
                         <label for="search_name">Search by Name</label>
@@ -686,10 +805,10 @@ $departments = $dept_stmt->fetchAll(PDO::FETCH_COLUMN);
                 Sort By:
             </span>
             <div class="sort-buttons">
-                <a href="?search_name=<?php echo urlencode($search_name); ?>&search_email=<?php echo urlencode($search_email); ?>&filter_department=<?php echo urlencode($filter_department); ?>&filter_salary_min=<?php echo $filter_salary_min ?? ''; ?>&filter_salary_max=<?php echo $filter_salary_max ?? ''; ?>&sort_by=date_added" class="sort-btn <?php echo $sort_by === 'date_added' ? 'active' : ''; ?>">Date Added</a>
-                <a href="?search_name=<?php echo urlencode($search_name); ?>&search_email=<?php echo urlencode($search_email); ?>&filter_department=<?php echo urlencode($filter_department); ?>&filter_salary_min=<?php echo $filter_salary_min ?? ''; ?>&filter_salary_max=<?php echo $filter_salary_max ?? ''; ?>&sort_by=name" class="sort-btn <?php echo $sort_by === 'name' ? 'active' : ''; ?>">Name (A-Z)</a>
-                <a href="?search_name=<?php echo urlencode($search_name); ?>&search_email=<?php echo urlencode($search_email); ?>&filter_department=<?php echo urlencode($filter_department); ?>&filter_salary_min=<?php echo $filter_salary_min ?? ''; ?>&filter_salary_max=<?php echo $filter_salary_max ?? ''; ?>&sort_by=salary_high" class="sort-btn <?php echo $sort_by === 'salary_high' ? 'active' : ''; ?>">Salary (High-Low)</a>
-                <a href="?search_name=<?php echo urlencode($search_name); ?>&search_email=<?php echo urlencode($search_email); ?>&filter_department=<?php echo urlencode($filter_department); ?>&filter_salary_min=<?php echo $filter_salary_min ?? ''; ?>&filter_salary_max=<?php echo $filter_salary_max ?? ''; ?>&sort_by=department" class="sort-btn <?php echo $sort_by === 'department' ? 'active' : ''; ?>">Department</a>
+                <a href="?search_name=<?php echo urlencode($search_name); ?>&search_email=<?php echo urlencode($search_email); ?>&filter_department=<?php echo urlencode($filter_department); ?>&filter_salary_min=<?php echo $filter_salary_min ?? ''; ?>&filter_salary_max=<?php echo $filter_salary_max ?? ''; ?>&sort_by=date_added&page=1" class="sort-btn <?php echo $sort_by === 'date_added' ? 'active' : ''; ?>">Date Added</a>
+                <a href="?search_name=<?php echo urlencode($search_name); ?>&search_email=<?php echo urlencode($search_email); ?>&filter_department=<?php echo urlencode($filter_department); ?>&filter_salary_min=<?php echo $filter_salary_min ?? ''; ?>&filter_salary_max=<?php echo $filter_salary_max ?? ''; ?>&sort_by=name&page=1" class="sort-btn <?php echo $sort_by === 'name' ? 'active' : ''; ?>">Name (A-Z)</a>
+                <a href="?search_name=<?php echo urlencode($search_name); ?>&search_email=<?php echo urlencode($search_email); ?>&filter_department=<?php echo urlencode($filter_department); ?>&filter_salary_min=<?php echo $filter_salary_min ?? ''; ?>&filter_salary_max=<?php echo $filter_salary_max ?? ''; ?>&sort_by=salary_high&page=1" class="sort-btn <?php echo $sort_by === 'salary_high' ? 'active' : ''; ?>">Salary (High-Low)</a>
+                <a href="?search_name=<?php echo urlencode($search_name); ?>&search_email=<?php echo urlencode($search_email); ?>&filter_department=<?php echo urlencode($filter_department); ?>&filter_salary_min=<?php echo $filter_salary_min ?? ''; ?>&filter_salary_max=<?php echo $filter_salary_max ?? ''; ?>&sort_by=department&page=1" class="sort-btn <?php echo $sort_by === 'department' ? 'active' : ''; ?>">Department</a>
             </div>
         </div>
 
@@ -741,6 +860,103 @@ $departments = $dept_stmt->fetchAll(PDO::FETCH_COLUMN);
                 <?php endif; ?>
             <?php endif; ?>
         </div>
+
+        <?php if ($total_employees > 0): ?>
+        <div class="pagination-section">
+            <div class="pagination-info">
+                <?php
+                $start = $offset + 1;
+                $end = min($offset + $employees_per_page, $total_employees);
+                echo "Showing {$start}-{$end} of {$total_employees} results";
+                ?>
+            </div>
+
+            <div class="pagination-controls">
+                <?php
+                // Build URL parameters for pagination links
+                $base_url_params = [];
+                if (!empty($search_name)) $base_url_params[] = "search_name=" . urlencode($search_name);
+                if (!empty($search_email)) $base_url_params[] = "search_email=" . urlencode($search_email);
+                if (!empty($filter_department)) $base_url_params[] = "filter_department=" . urlencode($filter_department);
+                if ($filter_salary_min !== null) $base_url_params[] = "filter_salary_min=" . $filter_salary_min;
+                if ($filter_salary_max !== null) $base_url_params[] = "filter_salary_max=" . $filter_salary_max;
+                if ($sort_by !== 'date_added') $base_url_params[] = "sort_by=" . urlencode($sort_by);
+                $url_params = !empty($base_url_params) ? "&" . implode("&", $base_url_params) : "";
+                ?>
+
+                <!-- Previous Button -->
+                <?php if ($page > 1): ?>
+                    <a href="?page=<?php echo $page - 1; ?><?php echo $url_params; ?>" class="pagination-btn">
+                        <svg width="14" height="14" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="15 18 9 12 15 6"></polyline>
+                        </svg>
+                        Previous
+                    </a>
+                <?php else: ?>
+                    <span class="pagination-btn" style="cursor: not-allowed; opacity: 0.5;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="15 18 9 12 15 6"></polyline>
+                        </svg>
+                        Previous
+                    </span>
+                <?php endif; ?>
+
+                <!-- Page Numbers -->
+                <?php
+                $start_page = max(1, $page - 2);
+                $end_page = min($total_pages, $page + 2);
+
+                if ($start_page > 1) {
+                    echo '<a href="?page=1' . $url_params . '" class="pagination-btn">1</a>';
+                    if ($start_page > 2) echo '<span class="pagination-btn" style="cursor: default; background: transparent;">...</span>';
+                }
+
+                for ($i = $start_page; $i <= $end_page; $i++) {
+                    $active_class = ($i == $page) ? 'active' : '';
+                    echo '<a href="?page=' . $i . $url_params . '" class="pagination-btn ' . $active_class . '">' . $i . '</a>';
+                }
+
+                if ($end_page < $total_pages) {
+                    if ($end_page < $total_pages - 1) echo '<span class="pagination-btn" style="cursor: default; background: transparent;">...</span>';
+                    echo '<a href="?page=' . $total_pages . $url_params . '" class="pagination-btn">' . $total_pages . '</a>';
+                }
+                ?>
+
+                <!-- Next Button -->
+                <?php if ($page < $total_pages): ?>
+                    <a href="?page=<?php echo $page + 1; ?><?php echo $url_params; ?>" class="pagination-btn">
+                        Next
+                        <svg width="14" height="14" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="9 18 15 12 9 6"></polyline>
+                        </svg>
+                    </a>
+                <?php else: ?>
+                    <span class="pagination-btn" style="cursor: not-allowed; opacity: 0.5;">
+                        Next
+                        <svg width="14" height="14" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="9 18 15 12 9 6"></polyline>
+                        </svg>
+                    </span>
+                <?php endif; ?>
+
+                <!-- Jump to Page -->
+                <div class="page-jump">
+                    <span>Jump to:</span>
+                    <form method="GET" action="index.php" style="display: flex; gap: 8px; align-items: center;">
+                        <?php if (!empty($search_name)): ?><input type="hidden" name="search_name" value="<?php echo htmlspecialchars($search_name); ?>"><?php endif; ?>
+                        <?php if (!empty($search_email)): ?><input type="hidden" name="search_email" value="<?php echo htmlspecialchars($search_email); ?>"><?php endif; ?>
+                        <?php if (!empty($filter_department)): ?><input type="hidden" name="filter_department" value="<?php echo htmlspecialchars($filter_department); ?>"><?php endif; ?>
+                        <?php if ($filter_salary_min !== null): ?><input type="hidden" name="filter_salary_min" value="<?php echo $filter_salary_min; ?>"><?php endif; ?>
+                        <?php if ($filter_salary_max !== null): ?><input type="hidden" name="filter_salary_max" value="<?php echo $filter_salary_max; ?>"><?php endif; ?>
+                        <?php if ($sort_by !== 'date_added'): ?><input type="hidden" name="sort_by" value="<?php echo htmlspecialchars($sort_by); ?>"><?php endif; ?>
+                        <input type="number" name="page" class="page-input" min="1" max="<?php echo $total_pages; ?>" placeholder="Page" value="<?php echo $page; ?>">
+                        <button type="submit" class="pagination-btn" style="padding: 6px 12px;">Go</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+
     </div>
 
     <script>
@@ -752,8 +968,8 @@ $departments = $dept_stmt->fetchAll(PDO::FETCH_COLUMN);
             document.getElementById('filter_salary_min').value = '';
             document.getElementById('filter_salary_max').value = '';
 
-            // Submit the form to refresh the page with no filters
-            window.location.href = 'index.php';
+            // Submit the form to refresh the page with no filters and reset to page 1
+            window.location.href = 'index.php?page=1';
         }
 
         // Auto-dismiss success message after animation completes
