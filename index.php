@@ -819,6 +819,7 @@ $departments = $dept_stmt->fetchAll(PDO::FETCH_COLUMN);
                         <tr>
                             <th>Name</th>
                             <th>Email</th>
+                            <th>Phone</th>
                             <th>Department</th>
                             <th>Salary</th>
                             <th>Actions</th>
@@ -829,6 +830,7 @@ $departments = $dept_stmt->fetchAll(PDO::FETCH_COLUMN);
                             <tr>
                                 <td class="employee-name"><?php echo htmlspecialchars($emp['name']); ?></td>
                                 <td class="employee-email"><?php echo htmlspecialchars($emp['email']); ?></td>
+                                <td><?php echo htmlspecialchars(preg_replace('/^(\+\d{1,3})(\d+)$/', '$1 $2', $emp['phone'] ?? '')); ?></td>
                                 <td><span class="department"><?php echo htmlspecialchars($emp['department']); ?></span></td>
                                 <td class="salary">₹<?php echo number_format($emp['salary'], 2); ?></td>
                                 <td>
