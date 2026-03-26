@@ -190,6 +190,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             background: rgba(255, 255, 255, 0.1);
         }
 
+        /* Hide spinner arrows on number inputs */
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
+
         .error-message {
             background: #451a1a;
             color: #f87171;

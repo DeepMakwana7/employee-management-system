@@ -19,6 +19,10 @@ $search_email = isset($_GET['search_email']) ? trim($_GET['search_email']) : '';
 $filter_department = isset($_GET['filter_department']) ? trim($_GET['filter_department']) : '';
 $filter_salary_min = isset($_GET['filter_salary_min']) && $_GET['filter_salary_min'] !== '' ? (int)$_GET['filter_salary_min'] : null;
 $filter_salary_max = isset($_GET['filter_salary_max']) && $_GET['filter_salary_max'] !== '' ? (int)$_GET['filter_salary_max'] : null;
+$sort_by = isset($_GET['sort_by']) ? trim($_GET['sort_by']) : 'date_added';
+
+// Check if any filters are active
+$has_active_filters = !empty($search_name) || !empty($search_email) || !empty($filter_department) || $filter_salary_min !== null || $filter_salary_max !== null;
 
 // Build the SQL query with filters
 $query = "SELECT * FROM employees WHERE 1=1";
@@ -49,7 +53,20 @@ if ($filter_salary_max !== null) {
     $params[] = $filter_salary_max;
 }
 
-$query .= " ORDER BY id DESC";
+// Apply sorting
+switch($sort_by) {
+    case 'name':
+        $query .= " ORDER BY name ASC";
+        break;
+    case 'salary_high':
+        $query .= " ORDER BY salary DESC";
+        break;
+    case 'department':
+        $query .= " ORDER BY department ASC, name ASC";
+        break;
+    default:
+        $query .= " ORDER BY id DESC";
+}
 
 $stmt = $conn->prepare($query);
 $stmt->execute($params);
@@ -225,8 +242,8 @@ $departments = $dept_stmt->fetchAll(PDO::FETCH_COLUMN);
 
         .department {
             display: inline-block;
-            background: rgba(59, 130, 246, 0.1);
-            color: #1d4ed8;
+            background: rgba(16, 185, 129, 0.15);
+            color: #10b981;
             padding: 4px 12px;
             border-radius: 20px;
             font-size: 13px;
@@ -396,6 +413,10 @@ $departments = $dept_stmt->fetchAll(PDO::FETCH_COLUMN);
             transition: all 0.2s ease;
             text-transform: uppercase;
             letter-spacing: 0.5px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
         }
 
         .btn-filter {
@@ -420,6 +441,123 @@ $departments = $dept_stmt->fetchAll(PDO::FETCH_COLUMN);
             background: rgba(255, 255, 255, 0.15);
             color: #ffffff;
             border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Hide spinner arrows on number inputs */
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
+
+        .sort-section {
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 16px 24px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .sort-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: #d1d5db;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .sort-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .sort-btn {
+            padding: 8px 16px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #d1d5db;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            text-decoration: none;
+        }
+
+        .sort-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.3);
+            color: #ffffff;
+        }
+
+        .sort-btn.active {
+            background: #6366f1;
+            color: white;
+            border-color: #6366f1;
+        }
+
+        .section-icon {
+            width: 24px;
+            height: 24px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .filter-icon svg,
+        .sort-icon svg {
+            width: 24px;
+            height: 24px;
+            stroke: #6366f1;
+            fill: none;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .sort-icon svg {
+            stroke: #a5b4fc;
+        }
+
+        .no-user-found {
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 60px 20px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .no-user-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+            opacity: 0.8;
+        }
+
+        .no-user-title {
+            font-size: 20px;
+            color: #ffffff;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .no-user-message {
+            color: #9ca3af;
+            font-size: 15px;
+            margin-bottom: 24px;
         }
 
         @media (max-width: 768px) {
@@ -461,7 +599,14 @@ $departments = $dept_stmt->fetchAll(PDO::FETCH_COLUMN);
 
         <div class="filter-section">
             <div class="filter-title">
-                <i class="fas fa-filter"></i> Search & Filter Employees
+                <span class="section-icon filter-icon">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <line x1="4" y1="6" x2="20" y2="6"/>
+                        <line x1="6" y1="12" x2="18" y2="12"/>
+                        <line x1="8" y1="18" x2="16" y2="18"/>
+                    </svg>
+                </span>
+                Search & Filter Employees
             </div>
 
             <form method="GET" action="index.php" id="filterForm">
@@ -501,10 +646,22 @@ $departments = $dept_stmt->fetchAll(PDO::FETCH_COLUMN);
 
                 <div class="filter-buttons">
                     <button type="submit" class="btn-filter">
-                        <i class="fas fa-search"></i> Apply Filters
+                        <span style="display: flex; align-items: center; justify-content: center; gap: 6px;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg>
+                            Apply Filters
+                        </span>
                     </button>
                     <button type="button" class="btn-reset" onclick="resetFilters()">
-                        <i class="fas fa-redo"></i> Reset Filters
+                        <span style="display: flex; align-items: center; justify-content: center; gap: 6px;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="23 4 23 10 17 10"></polyline>
+                                <path d="M20.49 15a9 9 0 1 1-2-8.83"></path>
+                            </svg>
+                            Reset Filters
+                        </span>
                     </button>
                 </div>
             </form>
@@ -515,6 +672,26 @@ $departments = $dept_stmt->fetchAll(PDO::FETCH_COLUMN);
                 ✓ Operation completed successfully!
             </div>
         <?php endif; ?>
+
+        <!-- Sort Section -->
+        <div class="sort-section">
+            <span class="sort-label">
+                <span class="section-icon sort-icon">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="3" y="14" width="4" height="6"/>
+                        <rect x="10" y="8" width="4" height="12"/>
+                        <rect x="17" y="3" width="4" height="17"/>
+                    </svg>
+                </span>
+                Sort By:
+            </span>
+            <div class="sort-buttons">
+                <a href="?search_name=<?php echo urlencode($search_name); ?>&search_email=<?php echo urlencode($search_email); ?>&filter_department=<?php echo urlencode($filter_department); ?>&filter_salary_min=<?php echo $filter_salary_min ?? ''; ?>&filter_salary_max=<?php echo $filter_salary_max ?? ''; ?>&sort_by=date_added" class="sort-btn <?php echo $sort_by === 'date_added' ? 'active' : ''; ?>">Date Added</a>
+                <a href="?search_name=<?php echo urlencode($search_name); ?>&search_email=<?php echo urlencode($search_email); ?>&filter_department=<?php echo urlencode($filter_department); ?>&filter_salary_min=<?php echo $filter_salary_min ?? ''; ?>&filter_salary_max=<?php echo $filter_salary_max ?? ''; ?>&sort_by=name" class="sort-btn <?php echo $sort_by === 'name' ? 'active' : ''; ?>">Name (A-Z)</a>
+                <a href="?search_name=<?php echo urlencode($search_name); ?>&search_email=<?php echo urlencode($search_email); ?>&filter_department=<?php echo urlencode($filter_department); ?>&filter_salary_min=<?php echo $filter_salary_min ?? ''; ?>&filter_salary_max=<?php echo $filter_salary_max ?? ''; ?>&sort_by=salary_high" class="sort-btn <?php echo $sort_by === 'salary_high' ? 'active' : ''; ?>">Salary (High-Low)</a>
+                <a href="?search_name=<?php echo urlencode($search_name); ?>&search_email=<?php echo urlencode($search_email); ?>&filter_department=<?php echo urlencode($filter_department); ?>&filter_salary_min=<?php echo $filter_salary_min ?? ''; ?>&filter_salary_max=<?php echo $filter_salary_max ?? ''; ?>&sort_by=department" class="sort-btn <?php echo $sort_by === 'department' ? 'active' : ''; ?>">Department</a>
+            </div>
+        </div>
 
         <div class="table-wrapper">
             <?php if (count($employees) > 0): ?>
@@ -546,13 +723,22 @@ $departments = $dept_stmt->fetchAll(PDO::FETCH_COLUMN);
                     </tbody>
                 </table>
             <?php else: ?>
-                <div class="empty-state">
-                    <div class="empty-state-icon">📭</div>
-                    <h3 style="color: var(--dark); margin-bottom: 10px;">No employees yet</h3>
-                    <p>Start by adding your first employee to the system</p>
-                    <br>
-                    <a href="add.php" class="btn-add">+ Add Employee</a>
-                </div>
+                <?php if ($has_active_filters): ?>
+                    <div class="no-user-found">
+                        <div class="no-user-icon">🔍</div>
+                        <div class="no-user-title">NO USER FOUND</div>
+                        <div class="no-user-message">TRY REMOVING THE FILTER</div>
+                        <a href="index.php" class="btn-reset" style="display: inline-block;">Clear All Filters</a>
+                    </div>
+                <?php else: ?>
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📭</div>
+                        <h3 style="color: var(--dark); margin-bottom: 10px;">No employees yet</h3>
+                        <p>Start by adding your first employee to the system</p>
+                        <br>
+                        <a href="add.php" class="btn-add">+ Add Employee</a>
+                    </div>
+                <?php endif; ?>
             <?php endif; ?>
         </div>
     </div>
