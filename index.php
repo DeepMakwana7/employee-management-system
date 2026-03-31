@@ -1,17 +1,6 @@
 <?php
 
-$host = 'localhost';           // MySQL host
-$db_name = 'employee_system';  // Database name
-$db_user = 'root';             // MySQL username
-$db_pass = '';                 // MySQL password
-
-
-try {
-    $conn = new PDO("mysql:host=$host;port=3307;dbname=$db_name", $db_user, $db_pass);
-    $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-} catch(PDOException $e) {
-    die("Connection failed: " . $e->getMessage());
-}
+require_once 'config.php';
 
 // Get search and filter parameters
 $search_name = isset($_GET['search_name']) ? trim($_GET['search_name']) : '';
